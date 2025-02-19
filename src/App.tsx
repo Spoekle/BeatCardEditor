@@ -2,8 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import './App.css';
 
 import NavBar from './pages/Components/Header/NavBar';
-import Generator from './pages/Generator/Generator';
-import Editor from './pages/Editor/Editor';
+import CardEditor from './pages/CardEditor/CardEditor';
 import PrivacyStatement from './pages/PrivacyStatement/PrivacyStatement';
 import Footer from './pages/Components/Footer/Footer';
 
@@ -14,8 +13,7 @@ function App() {
                 <NavBar />
                 <Routes>
                     <Route path="/" element={<Navigate to="/editor" />} />
-                    <Route path="/generator" element={<Generator />} />
-                    <Route path="/editor" element={<Editor />} />
+                    <Route path="/editor" element={<CardEditor />} />
                     <Route path="/privacy" element={<PrivacyStatement />} />
                 </Routes>
                 <Footer />
