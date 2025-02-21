@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import placeholder from '../../images/placeholder.jpg';
 
 export interface ComponentType {
   id: number;
@@ -17,11 +18,10 @@ interface CardConfig {
     cardCornerRadius: number;
     background: {
       type: string;
-      srcField: string;
-      blur: number;
-      rotation: number;
-      color: string;
-      gradient: { startColor: string; endColor: string; };
+      srcField?: string;
+      blur?: number;
+      rotation?: number;
+      color?: string;
     };
     components: ComponentType[];
   }
@@ -35,22 +35,18 @@ interface VisualEditorProps {
 
 const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addComponent, fetchedData }) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const scale = 0.5;
-  const gridStep = Math.min(config.width, config.height) / 10;
+  const scale = 1;
+  const gridStep = 10;
   const snap = (val: number, step: number) => Math.round(val / step) * step;
+
+  // Add helper function to resolve nested values (for token replacement)
+  const getNestedValue = (obj: any, path: string): any =>
+    path.split('.').reduce((acc, part) => acc && acc[part], obj);
 
   const [newType, setNewType] = React.useState<string>('text');
   const [selectedComponentId, setSelectedComponentId] = React.useState<number | null>(null);
   const [draggingId, setDraggingId] = React.useState<number | null>(null);
   const [offset, setOffset] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  // Helper to resolve image src from fetchedData without mutating config
-  const resolveImageSrc = (comp: ComponentType): string => {
-    if(fetchedData && fetchedData.versions && fetchedData.versions[0]?.coverURL) {
-      return fetchedData.versions[0].coverURL;
-    }
-    return comp.srcField;
-  };
 
   const handleMouseDown = (e: React.MouseEvent, comp: ComponentType) => {
     setSelectedComponentId(comp.id);
@@ -111,21 +107,68 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
   };
 
   const handleAddComponent = () => {
-    const comp: ComponentType = {
-      id: Date.now(),
-      type: newType,
-      x: 0,
-      y: 0,
-      width: newType === 'image' ? 100 : 100,
-      height: newType === 'image' ? 100 : 30,
-      ...(newType === 'text' && { text: 'New Text' }),
-      ...(newType === 'image' && { 
-          srcField: "versions.0.coverURL",
-          cornerRadius: 0,
-          clip: true,
-          shadow: { color: "rgba(0,0,0,0.5)", offsetX: 5, offsetY: 5, blur: 5 }
-       })
-    };
+    let comp: ComponentType;
+    if(newType === 'text') {
+      comp = {
+        id: Date.now(),
+        type: 'text',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 30,
+        maxWidth: 100,
+        text: 'New Text',
+        font: '24px sans-serif',
+        fillStyle: 'black',
+        textAlign: 'left'
+      };
+    } else if(newType === 'image') {
+      comp = {
+        id: Date.now(),
+        type: 'image',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        srcField: "versions.0.coverURL",
+        cornerRadius: 0,
+        clip: true,
+        shadow: { color: "rgba(0,0,0,0.5)", offsetX: 5, offsetY: 5, blur: 5 }
+      };
+    } else if(newType === 'roundedRect') {
+      comp = {
+        id: Date.now(),
+        type: 'roundedRect',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        cornerRadius: 10,
+        fillStyle: 'transparent'
+      };
+    } else if(newType === 'starRating') {
+      comp = {
+        id: Date.now(),
+        type: 'starRating',
+        x: 0,
+        y: 0,
+        width: 550,
+        ratings: [
+          { label: "ES", rating: "{starRatings.ES}", color: "rgb(22 163 74)" },
+          { label: "NOR", rating: "{starRatings.NOR}", color: "rgb(59 130 246)" },
+          { label: "HARD", rating: "{starRatings.HARD}", color: "rgb(249 115 22)" },
+          { label: "EX", rating: "{starRatings.EXP}", color: "rgb(220 38 38)" },
+          { label: "EXP", rating: "{starRatings.EXP}", color: "rgb(126 34 206)" }
+        ],
+        defaultWidth: 100,
+        specialWidth: 120,
+        height: 50,
+        defaultSpacing: 110,
+        specialSpacing: 130
+      };
+    } else {
+      return;
+    }
     addComponent(comp);
   };
 
@@ -133,7 +176,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
     <div className="flex h-screen" onMouseUp={handleMouseUp}>
       {/* Canvas Area */}
       <div className="flex-1 p-4" onMouseMove={handleMouseMove}>
-        <h1 className="text-2xl font-bold mb-4">Visual Editor</h1>
+        <h1 className="text-4xl font-bold mb-6">Visual Editor</h1>
         <div className="mb-4 flex items-center gap-2">
           <select value={newType} onChange={e => setNewType(e.target.value)} className="p-2 border rounded bg-white text-black">
             <option value="text">text</option>
@@ -160,89 +203,152 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
           style={{
             width: config.width * scale,
             height: config.height * scale,
-            borderRadius: config.cardCornerRadius * scale
+            borderRadius: config.cardCornerRadius * scale,
+            overflow: 'hidden'
           }}
         >
-          {/* Draw square grid lines */}
+          {/* New Background Layer */}
+          <div className="absolute inset-0" style={{
+            borderRadius: config.cardCornerRadius * scale,
+            opacity: 0.3,
+            zIndex: 0,
+            ...(config.background?.type === 'color' && config.background.color ? { backgroundColor: config.background.color } : {}),
+            ...(config.background?.type === 'cover' && config.background.srcField ? {
+              backgroundImage: `url(${getNestedValue(fetchedData, config.background.srcField) || placeholder})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            } : {})
+          }} />
+          {/* Grid Lines */}
           {Array.from({ length: Math.floor(config.width / gridStep) + 1 }).map((_, i) => {
-            const left = i * gridStep * scale;
+            const pos = i * gridStep;
+            const isMiddle = Math.abs(pos - config.width / 2) < gridStep / 2;
             return (
               <div key={`v${i}`}
                 style={{
                   position: 'absolute',
-                  left,
+                  left: pos * scale,
                   top: 0,
                   height: '100%',
-                  width: 1,
-                  background: 'rgba(0,0,0,0.2)'
+                  width: isMiddle ? 2 : 1,
+                  background: isMiddle ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.2)',
+                  zIndex: 1
                 }} />
             );
           })}
           {Array.from({ length: Math.floor(config.height / gridStep) + 1 }).map((_, i) => {
-            const top = i * gridStep * scale;
+            const pos = i * gridStep;
+            const isMiddle = Math.abs(pos - config.height / 2) < gridStep / 2;
             return (
               <div key={`h${i}`}
                 style={{
                   position: 'absolute',
-                  top,
+                  top: pos * scale,
                   left: 0,
                   width: '100%',
-                  height: 1,
-                  background: 'rgba(0,0,0,0.2)'
+                  height: isMiddle ? 2 : 1,
+                  background: isMiddle ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.2)',
+                  zIndex: 1
                 }} />
             );
           })}
           {/* Render Components */}
-          {config.components.map(comp => (
-            <div
-              key={comp.id}
-              onMouseDown={e => handleMouseDown(e, comp)}
-              style={{
-                position: 'absolute',
-                left: comp.x * scale,
-                top: comp.y * scale,
-                width: comp.width * scale,
-                height: comp.height * scale,
-                border: comp.id === selectedComponentId ? '2px solid blue' : '1px solid gray',
-                padding: '2px',
-                cursor: 'move'
-              }}
-            >
-              {comp.type === 'text' && (
-                <div style={{ color: 'black', fontSize: '12px' }}>
-                  {comp.text}
-                </div>
-              )}
-              {comp.type === 'image' && (
-                <img src={resolveImageSrc(comp)} alt="" style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0
-                }} />
-              )}
-              {comp.type === 'roundedRect' && (
-                <div style={{ width: '100%', height: '100%', background: comp.fillStyle, borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0 }} />
-              )}
-              {comp.type === 'starRating' && (
-                <div style={{ display: 'flex' }}>
-                  {comp.ratings.map((item: any, i: number) => (
-                    <div key={i} style={{
-                      width: (i === 0 ? comp.defaultWidth : comp.specialWidth) * scale,
-                      height: comp.height * scale,
-                      background: item.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: i < comp.ratings.length - 1 ? ((i === 0 ? comp.defaultSpacing : comp.specialSpacing) * scale * 0.2) : 0
-                    }}>
-                      <span style={{ color: 'white', fontSize: '10px' }}>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            {config.components.map(comp => (
+              <div
+                key={comp.id}
+                onMouseDown={e => handleMouseDown(e, comp)}
+                style={{
+                  position: 'absolute',
+                  left: comp.x * scale,
+                  top: comp.y * scale,
+                  width: comp.width * scale,
+                  height: comp.height * scale,
+                  border: comp.id === selectedComponentId ? '2px solid blue' : '1px solid gray',
+                  padding: '2px',
+                  cursor: 'move'
+                }}
+              >
+                {comp.type === 'text' && (
+                  <div style={{ 
+                    color: comp.fillStyle || 'black', 
+                    font: comp.font || '24px sans-serif',
+                    textAlign: comp.textAlign,
+                    maxWidth: comp.maxWidth
+
+                  }}>
+                    {comp.text}
+                  </div>
+                )}
+                {comp.type === 'image' && (
+                  <img src={placeholder} alt="" style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0
+                  }} />
+                )}
+                {comp.type === 'roundedRect' && (
+                  <div style={{ width: '100%', height: '100%', background: comp.fillStyle, borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0 }} />
+                )}
+                {comp.type === 'starRating' && (
+                  // New starRating rendering block matching jsonHelper's style
+                  (() => {
+                    let currentX = 0;
+                    const ratings = comp.ratings ?? [{
+                      label: "Placeholder",
+                      rating: "",
+                      color: "gray",
+                      defaultWidth: 100,
+                      specialWidth: 120,
+                      defaultSpacing: 110,
+                      specialSpacing: 130
+                    }];
+                    return (
+                      <div style={{ position: 'relative', width: comp.width * scale, height: (comp.height || 50) * scale }}>
+                        {ratings.map((ratingObj: any, i: number) => {
+                          let ratingValue = ratingObj.rating;
+                          if (fetchedData && ratingValue && ratingValue.startsWith('{') && ratingValue.endsWith('}')) {
+                            const key = ratingValue.slice(1, -1);
+                            ratingValue = getNestedValue(fetchedData, key);
+                          }
+                          if (ratingValue !== undefined && ratingValue !== null && ratingValue !== '') {
+                            const rectWidth = (ratingValue === 'Unranked' || ratingValue === 'Qualified' 
+                              ? (comp.specialWidth || 120) 
+                              : (comp.defaultWidth || 100)) * scale;
+                            const starElement = (
+                              <div key={i} style={{
+                                position: 'absolute',
+                                left: currentX,
+                                top: 0,
+                                width: rectWidth,
+                                height: (comp.height || 50) * scale,
+                                background: ratingObj.color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              className='rounded-md'
+                              >
+                                <span style={{ color: 'white', font: comp.font || 'bold 20px sans-serif' }}>
+                                  {ratingObj.label}★
+                                </span>
+                              </div>
+                            );
+                            currentX += ((ratingValue === 'Unranked' || ratingValue === 'Qualified')
+                              ? (comp.specialSpacing || 130)
+                              : (comp.defaultSpacing || 110)) * scale;
+                            return starElement;
+                          }
+                          return null;
+                        })}
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       {/* Properties Panel */}
@@ -252,7 +358,6 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
           <>
             {config.components.filter(comp => comp.id === selectedComponentId).map(comp => (
               <div key={comp.id}>
-                {/* ...minimal property inputs... */}
                 <div className="mb-4">
                   <label className="block mb-1">Type</label>
                   <select value={comp.type} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, type: e.target.value, ...(e.target.value==="image" && { srcField: c.srcField || "images/placeholder.jpg" }) } : c) })} className="w-full p-2 border rounded">
@@ -268,6 +373,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                 </div>
                 <div className="mb-4">
                   <label className="block mb-1">Y</label>
+                  <input type='number' value={comp.y} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, y: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
                 </div>
                 <div className="mb-4">
                   <label className="block mb-1">Width</label>
@@ -278,10 +384,41 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                   <input type="number" value={comp.height} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, height: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
                 </div>
                 {comp.type === 'text' && (
-                  <div className="mb-4">
-                    <label className="block mb-1">Text</label>
-                    <input type="text" value={comp.text} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, text: e.target.value } : c) })} className="w-full p-2 border rounded" />
-                  </div>
+                  <>
+                    <div className="mb-4">
+                      <label className="block mb-1">Text</label>
+                      <input type="text" value={comp.text} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, text: e.target.value } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Max Width</label>
+                      <input type="number" value={comp.maxWidth} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, maxWidth: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Fill Style</label>
+                      <input type="text" value={comp.fillStyle || ''} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, fillStyle: e.target.value } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Font</label>
+                      <input type="text" value={comp.font} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, font: e.target.value } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Text Align</label>
+                      <select
+                      value={comp.textAlign || 'left'}
+                      onChange={e => setConfig({
+                        ...config,
+                        components: config.components.map(c =>
+                        c.id === comp.id ? { ...c, textAlign: e.target.value } : c
+                        )
+                      })}
+                      className="w-full p-2 border rounded"
+                      >
+                      <option value="left">left</option>
+                      <option value="center">center</option>
+                      <option value="right">right</option>
+                      </select>
+                    </div>
+                  </>
                 )}
                 {comp.type === 'image' && (
                   <>

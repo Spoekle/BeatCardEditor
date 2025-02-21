@@ -65,7 +65,7 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
     let component: any;
     if(newComponentType === 'text'){
       component = {
-        id: Date.now(), // added unique id
+        id: Date.now(),
         type: 'text',
         x: 0,
         y: 0,
@@ -75,20 +75,20 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
       };
     } else if(newComponentType === 'image'){
       component = {
-        id: Date.now(), // added unique id
+        id: Date.now(),
         type: 'image',
         x: 0,
         y: 0,
         width: 100,
         height: 100,
-        srcField: '',
-        cornerRadius: 0, // added rounded corner property
+        srcField: 'versions.0.coverURL',
+        cornerRadius: 0,
         clip: true,
         shadow: { color: 'rgba(0,0,0,0.5)', offsetX: 5, offsetY: 5, blur: 5 }
       };
     } else if(newComponentType === 'roundedRect'){
       component = {
-        id: Date.now(), // added unique id
+        id: Date.now(),
         type: 'roundedRect',
         x: 0,
         y: 0,
@@ -100,7 +100,7 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
       };
     } else if(newComponentType === 'starRating'){
       component = {
-        id: Date.now(), // added unique id
+        id: Date.now(),
         type: 'starRating',
         x: 0,
         y: 0,
@@ -108,8 +108,8 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
           { "label": "ES", "rating": "{starRatings.ES}", "color": "rgb(22 163 74)" },
           { "label": "NOR", "rating": "{starRatings.NOR}", "color": "rgb(59 130 246)" },
           { "label": "HARD", "rating": "{starRatings.HARD}", "color": "rgb(249 115 22)" },
-          { "label": "EXP", "rating": "{starRatings.EXP}", "color": "rgb(220 38 38)" },
-          { "label": "EXP_PLUS", "rating": "{starRatings.EXP_PLUS}", "color": "rgb(126 34 206)" }
+          { "label": "EX", "rating": "{starRatings.EX}", "color": "rgb(220 38 38)" },
+          { "label": "EXP", "rating": "{starRatings.EXP}", "color": "rgb(126 34 206)" }
         ],
         defaultWidth: 100,
         specialWidth: 120,
@@ -124,7 +124,7 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
   };
 
   return (
-    <div>
+    <div className="w-full">
       <h1 className="text-4xl font-bold mb-6">Component Creator</h1>
       <div className="mb-4">
         <Typography variant="subtitle1">Beatsaver ID</Typography>
@@ -142,7 +142,7 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
       {fetchedData && (
         <div className="mb-4">
           <Typography variant="subtitle1">Fetched Data Preview:</Typography>
-          <pre className="bg-blue-500/20 border-dashed border-white border-2 text-white font-bold py-3 px-6 rounded-lg overflow-y-auto max-h-[30vh]">
+          <pre className="bg-blue-500/20 border-dashed border-white border-2 text-white font-bold py-3 px-6 rounded-lg overflow-y-auto max-h-[30vh] max-w-full">
             {JSON.stringify(fetchedData, null, 2)}
           </pre>
         </div>
@@ -165,12 +165,12 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
       {newComponentType === 'text' && fetchedData && (
         <div className="mb-4">
           {!selectedToken ? (
-            <>
+            <div className="mb-4">
               <Typography variant="caption">Select a token from top-level:</Typography>
               {renderTopLevelOptions(fetchedData)}
-            </>
+            </div>
           ) : (
-            <>
+            <div className="mb-4">
               <Typography variant="subtitle1">Selected Token: {selectedToken}</Typography>
               <Button onClick={() => setSelectedToken('')} className="mt-2 border-red-500 bg-red-500/10">
                 Reset Token
@@ -183,14 +183,14 @@ const ComponentCreator: React.FC<ComponentCreatorProps> = ({
                   {renderSubtokenOptions(selectedNestedData, selectedToken.replace(/{|}/g, ''))}
                 </>
               )}
-            </>
+            </div>
           )}
           <TextField 
             fullWidth 
             value={newComponentText || selectedToken} 
             onChange={e => setNewComponentText(e.target.value)} 
             placeholder="Enter component text" 
-            className="bg-white text-neutral-900 rounded-lg mt-2" 
+            className="bg-white text-neutral-900 rounded-lg mt-4" 
           />
         </div>
       )}

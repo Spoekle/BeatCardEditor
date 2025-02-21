@@ -48,7 +48,6 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
   updateSelectedComponent,
   deleteComponentAtIndex,
   fetchedData,
-  insertToken,
   moveComponent
 }) => {
   // Local state for token selection and drag indexes
