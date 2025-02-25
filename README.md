@@ -1,23 +1,19 @@
-# Password Generator
+# BeatCard Editor
 
-This project is a password generator application built with React and TypeScript. It allows users to generate secure passwords with customizable options and advanced features.
+BeatCard Editor is an web hosted extension for the SSRM Automation tool, which will probably get merged into this site so everything can be done from here.
 
 ## Features
 
-- Generate passwords using default or custom word lists
-- Customize password length
-- Include numbers, symbols, and uppercase letters
-- Advanced mode for generating complex passwords
-- Copy generated passwords to the clipboard
-- Save generated passwords
-- Import and export password options
+- Creating custom card components
+- Import/export config files
+- A responsive editor made for customizability
 
 ## Installation
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/Spoekle/genpass.git
-    cd genpass
+    git clone https://github.com/Spoekle/BeatCardEditor.git
+    cd BeatCardEditor
     ```
 
 2. Install dependencies:
