@@ -43,7 +43,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, setConfig, componen
               if (newType === 'color') {
                 newBg = { type: 'color', color: '#ffffff' };
               } else if (newType === 'cover') {
-                newBg = { type: 'cover', srcField: 'versions.0.coverURL' };
+                newBg = { type: 'cover', srcField: 'versions.0.coverURL', blur: 10 };
               }
               setConfig({ ...config, background: newBg });
             }}
@@ -80,7 +80,7 @@ const ConfigEditor: React.FC<ConfigEditorProps> = ({ config, setConfig, componen
               onChange={e =>
                 setConfig({
                   ...config,
-                  background: { type: 'cover', srcField: e.target.value }
+                  background: { type: 'cover', srcField: e.target.value, blur: 10 }
                 })
               }
               className="bg-white text-black rounded-lg"

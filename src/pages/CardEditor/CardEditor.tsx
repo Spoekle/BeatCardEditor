@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Button from '../Components/Button';
 import { useAlert, AlertProvider } from '../Components/AlertContext';
 import ConfigEditor from './ConfigEditor';
-import ComponentCreator from './ComponentCreator';
 import ComponentEditor from './ComponentEditor';
 import VisualEditor from './VisualEditor';
 
@@ -41,7 +40,8 @@ const CardEditor = () => {
     cardCornerRadius: 20,
     background: {
       type: 'color',
-      color: '#ffffff'
+      color: '#ffffff',
+      blur: 0,
     },
     components: []
   });
@@ -49,7 +49,7 @@ const CardEditor = () => {
   const [componentsText, setComponentsText] = useState('[]');
   const { addAlert } = useAlert();
   const [activeTab, setActiveTab] = useState<'config' | 'componentCreator' | 'componentEditor' | 'visualEditor'>('config');
-  const [beatsaverId, setBeatsaverId] = useState('');
+  const [beatsaverId, setBeatsaverId] = useState('3d56e');
   const [fetchedData, setFetchedData] = useState<any>(null);
   const [componentToken, setComponentToken] = useState('');
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
@@ -58,8 +58,8 @@ const CardEditor = () => {
     try {
       const parsed = JSON.parse(componentsText);
       setConfig(prev => ({ ...prev, components: parsed }));
+      fetchBeatsaverData();
     } catch (error) {
-      // handle invalid JSON silently or alert if desired
     }
   }, [componentsText]);
 
@@ -73,7 +73,6 @@ const CardEditor = () => {
       if (!res.ok) throw new Error('Fetch failed');
       const data = await res.json();
       setFetchedData(data);
-      addAlert('Data fetched successfully!', 'success');
     } catch (error) {
       addAlert('Beatsaver fetch error', 'error');
     }
@@ -122,9 +121,6 @@ const CardEditor = () => {
             <Button onClick={() => { setActiveTab('config'); setSelectedComponentIndex(null); }} className={activeTab === 'config' ? 'border-blue-500 bg-blue-500/10' : ''}>
               Config Editor
             </Button>
-            <Button onClick={() => { setActiveTab('componentCreator'); setSelectedComponentIndex(null); }} className={activeTab === 'componentCreator' ? 'border-blue-500 bg-blue-500/10' : ''}>
-              Component Creator
-            </Button>
             <Button onClick={() => { setActiveTab('componentEditor'); setSelectedComponentIndex(null); }} className={activeTab === 'componentEditor' ? 'border-blue-500 bg-blue-500/10' : ''}>
               Component Editor
             </Button>
@@ -135,21 +131,13 @@ const CardEditor = () => {
           {activeTab === 'config' && (
             <ConfigEditor config={config} setConfig={setConfig} componentsText={componentsText} setComponentsText={setComponentsText} addAlert={addAlert} />
           )}
-          {activeTab === 'componentCreator' && (
-            <ComponentCreator
-              beatsaverId={beatsaverId} setBeatsaverId={setBeatsaverId}
-              fetchedData={fetchedData} fetchBeatsaverData={fetchBeatsaverData}
-              componentToken={componentToken} setComponentToken={setComponentToken}
-              addComponent={addComponent} insertToken={insertToken}
-            />
-          )}
           {activeTab === 'componentEditor' && (
             <ComponentEditor
               config={config} selectedComponentIndex={selectedComponentIndex}
               setSelectedComponentIndex={setSelectedComponentIndex} updateSelectedComponent={updateSelectedComponent}
-              deleteComponentAtIndex={deleteComponentAtIndex} // new prop
+              deleteComponentAtIndex={deleteComponentAtIndex}
               fetchedData={fetchedData} insertToken={insertToken}
-              moveComponent={moveComponent}
+              moveComponent={moveComponent} addComponent={addComponent}
             />
           )} 
         </div>

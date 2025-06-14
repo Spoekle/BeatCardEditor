@@ -27,3 +27,11 @@
 .transition-transform {
     transition: transform 0.6s;
 }
+
+.no-move {
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+  }

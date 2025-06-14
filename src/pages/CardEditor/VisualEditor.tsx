@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import placeholder from '../../images/placeholder.jpg';
+import Button from '../Components/Button';
 
 export interface ComponentType {
   id: number;
@@ -39,7 +40,6 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
   const gridStep = 10;
   const snap = (val: number, step: number) => Math.round(val / step) * step;
 
-  // Add helper function to resolve nested values (for token replacement)
   const getNestedValue = (obj: any, path: string): any =>
     path.split('.').reduce((acc, part) => acc && acc[part], obj);
 
@@ -47,6 +47,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
   const [selectedComponentId, setSelectedComponentId] = React.useState<number | null>(null);
   const [draggingId, setDraggingId] = React.useState<number | null>(null);
   const [offset, setOffset] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [resizingInfo, setResizingInfo] = React.useState<{ id: number; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent, comp: ComponentType) => {
     setSelectedComponentId(comp.id);
@@ -58,6 +59,21 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (resizingInfo) {
+      const deltaX = (e.clientX - resizingInfo.startX) / scale;
+      const deltaY = (e.clientY - resizingInfo.startY) / scale;
+      const newWidth = Math.max(20, snap(resizingInfo.startWidth + deltaX, gridStep));
+      const newHeight = Math.max(20, snap(resizingInfo.startHeight + deltaY, gridStep));
+      setConfig({
+        ...config,
+        components: config.components.map(comp =>
+          comp.id === resizingInfo.id
+            ? { ...comp, width: newWidth, height: newHeight }
+            : comp
+        )
+      });
+      return;
+    }
     if (draggingId === null) return;
     const rect = cardRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -68,6 +84,17 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
       components: config.components.map(comp =>
         comp.id === draggingId ? { ...comp, x: newX, y: newY } : comp
       )
+    });
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, comp: ComponentType) => {
+    e.stopPropagation();
+    setResizingInfo({
+      id: comp.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: comp.width,
+      startHeight: comp.height
     });
   };
 
@@ -104,6 +131,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
       });
     }
     setDraggingId(null);
+    setResizingInfo(null);
   };
 
   const handleAddComponent = () => {
@@ -144,7 +172,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
         width: 100,
         height: 100,
         cornerRadius: 10,
-        fillStyle: 'transparent'
+        fillStyle: 'rgb(0, 0, 0, 0.5)'
       };
     } else if(newType === 'starRating') {
       comp = {
@@ -170,6 +198,15 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
       return;
     }
     addComponent(comp);
+  };
+
+  // Add new deletion function:
+  const handleDeleteComponent = (id: number) => {
+    setConfig({
+      ...config,
+      components: config.components.filter(comp => comp.id !== id)
+    });
+    setSelectedComponentId(null);
   };
 
   return (
@@ -270,18 +307,20 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                 }}
               >
                 {comp.type === 'text' && (
-                  <div style={{ 
+                  <div className="no-move" style={{ 
                     color: comp.fillStyle || 'black', 
                     font: comp.font || '24px sans-serif',
                     textAlign: comp.textAlign,
-                    maxWidth: comp.maxWidth
-
+                    maxWidth: comp.maxWidth,
+                    height: '100%',     
+                    display: 'flex',    
+                    alignItems: 'center'
                   }}>
                     {comp.text}
                   </div>
                 )}
                 {comp.type === 'image' && (
-                  <img src={placeholder} alt="" style={{
+                  <img src={placeholder} alt="" className="no-move" style={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
@@ -289,10 +328,9 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                   }} />
                 )}
                 {comp.type === 'roundedRect' && (
-                  <div style={{ width: '100%', height: '100%', background: comp.fillStyle, borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0 }} />
+                  <div className="no-move" style={{ width: '100%', height: '100%', background: comp.fillStyle, borderRadius: comp.cornerRadius ? comp.cornerRadius * scale : 0 }} />
                 )}
                 {comp.type === 'starRating' && (
-                  // New starRating rendering block matching jsonHelper's style
                   (() => {
                     let currentX = 0;
                     const ratings = comp.ratings ?? [{
@@ -305,7 +343,7 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                       specialSpacing: 130
                     }];
                     return (
-                      <div style={{ position: 'relative', width: comp.width * scale, height: (comp.height || 50) * scale }}>
+                      <div className="no-move" style={{ position: 'relative', width: comp.width * scale, height: (comp.height || 50) * scale }}>
                         {ratings.map((ratingObj: any, i: number) => {
                           let ratingValue = ratingObj.rating;
                           if (fetchedData && ratingValue && ratingValue.startsWith('{') && ratingValue.endsWith('}')) {
@@ -328,9 +366,9 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                                 alignItems: 'center',
                                 justifyContent: 'center'
                               }}
-                              className='rounded-md'
+                              className='rounded-md no-move'
                               >
-                                <span style={{ color: 'white', font: comp.font || 'bold 20px sans-serif' }}>
+                                <span className="no-move" style={{ color: 'white', font: comp.font || 'bold 20px sans-serif' }}>
                                   {ratingObj.label}★
                                 </span>
                               </div>
@@ -345,6 +383,22 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                       </div>
                     );
                   })()
+                )}
+                {/* Render resize handle if selected */}
+                {comp.id === selectedComponentId && (
+                  <div
+                    onMouseDown={e => handleResizeMouseDown(e, comp)}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: 0,
+                      width: 10,
+                      height: 10,
+                      backgroundColor: 'blue',
+                      cursor: 'nwse-resize',
+                      zIndex: 3
+                    }}
+                  />
                 )}
               </div>
             ))}
@@ -444,9 +498,39 @@ const VisualEditor: React.FC<VisualEditorProps> = ({ config, setConfig, addCompo
                     </div>
                   </>
                 )}
-                {/* ...other type-specific properties */}
+                {comp.type === 'starRating' && (
+                  <>
+                    <div className="mb-4">
+                      <label className="block mb-1">Default Width</label>
+                      <input type="text" value={comp.defaultWidth} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, defaultWidth: e.target.value } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Special Width</label>
+                      <input type="number" value={comp.specialWidth} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, specialWidth: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Height</label>
+                      <input type="number" value={comp.height} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, height: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Default Spacing</label>
+                      <input type="number" value={comp.defaultSpacing} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, defaultSpacing: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block mb-1">Special Spacing</label>
+                      <input type="number" value={comp.specialSpacing} onChange={e => setConfig({ ...config, components: config.components.map(c => c.id === comp.id ? { ...c, specialSpacing: parseInt(e.target.value) } : c) })} className="w-full p-2 border rounded" />
+                    </div>
+                  </>
+                )}
+                <Button 
+                  onClick={() => handleDeleteComponent(comp.id)}
+                  className="mt-4 w-full border-red-500 bg-red-500/10"
+                >
+                  Delete Component
+                </Button>
               </div>
             ))}
+
           </>
         ) : (
           <p>No component selected.</p>
