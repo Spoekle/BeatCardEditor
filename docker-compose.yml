@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: genpass-app
+    container_name: beatcards-app
     ports:
       - "84:80"
     environment:

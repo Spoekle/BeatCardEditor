@@ -30,15 +30,17 @@ const extractAlpha = (rgba: string | undefined) => {
   return match ? parseFloat(match[1]) : 1;
 };
 
+// Extend props to include addComponent
 interface ComponentEditorProps {
   config: any;
   selectedComponentIndex: number | null;
   setSelectedComponentIndex: (i: number | null) => void;
   updateSelectedComponent: (key: string, value: any) => void;
-  deleteComponentAtIndex: (index: number) => void; // updated prop
+  deleteComponentAtIndex: (index: number) => void;
   fetchedData?: any;
   insertToken: (token: string) => void;
-  moveComponent: (from: number, to: number) => void; // new prop for reordering
+  moveComponent: (from: number, to: number) => void;
+  addComponent: (component: any) => void; // new prop from creator
 }
 
 const ComponentEditor: React.FC<ComponentEditorProps> = ({
@@ -48,16 +50,17 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
   updateSelectedComponent,
   deleteComponentAtIndex,
   fetchedData,
-  moveComponent
+  moveComponent,
+  addComponent
 }) => {
-  // Local state for token selection and drag indexes
+  // ----- New state and functions for component creation -----
+  const [newComponentType, setNewComponentType] = React.useState<string>('text');
+  const [newComponentText, setNewComponentText] = React.useState<string>('');
   const [selectedToken, setSelectedToken] = React.useState<string>('');
-  const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
-  const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null);
-
-  // Token selector functions (unchanged)
+  
+  // Token selector functions (taken from ComponentCreator)
   const renderTopLevelOptions = (data: any) => (
-    <div className="flex flex-wrap gap-2 mt-2">
+    <div className="flex flex-wrap gap-2 my-2">
       {Object.keys(data).map(key => (
         <Button key={key} onClick={() => setSelectedToken(`{${key}}`)} className="border-gray-500 bg-gray-500/10">
           {`{${key}}`}
@@ -67,7 +70,7 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
   );
 
   const renderSubtokenOptions = (data: any, currentPath: string) => (
-    <div className="flex flex-wrap gap-2 mt-2">
+    <div className="flex flex-wrap gap-2 my-2">
       {Object.keys(data).map(subkey => {
         const newToken = `{${currentPath}.${subkey}}`;
         return (
@@ -79,11 +82,77 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
     </div>
   );
 
-  let selectedNestedData: any = null, currentTokenPath = '';
+  let selectedNestedData: any = null;
   if (selectedToken && fetchedData) {
-    currentTokenPath = selectedToken.replace(/{|}/g, '');
+    const currentTokenPath = selectedToken.replace(/{|}/g, '');
     selectedNestedData = getNestedData(fetchedData, currentTokenPath);
   }
+
+  const handleAddComponent = () => {
+    let component: any;
+    if(newComponentType === 'text'){
+      component = {
+        id: Date.now(),
+        type: 'text',
+        x: 0,
+        y: 0,
+        text: selectedToken || newComponentText || '{data.example}',
+        font: '24px sans-serif',
+        fillStyle: 'white'
+      };
+    } else if(newComponentType === 'image'){
+      component = {
+        id: Date.now(),
+        type: 'image',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        srcField: 'versions.0.coverURL',
+        cornerRadius: 0,
+        clip: true,
+        shadow: { color: 'rgba(0,0,0,0.5)', offsetX: 5, offsetY: 5, blur: 5 }
+      };
+    } else if(newComponentType === 'roundedRect'){
+      component = {
+        id: Date.now(),
+        type: 'roundedRect',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        cornerRadius: 10,
+        fillStyle: 'transparent'
+      };
+    } else if(newComponentType === 'starRating'){
+      component = {
+        id: Date.now(),
+        type: 'starRating',
+        x: 0,
+        y: 0,
+        ratings: [
+          { label: "ES", rating: "{starRatings.ES}", color: "rgb(22 163 74)" },
+          { label: "NOR", rating: "{starRatings.NOR}", color: "rgb(59 130 246)" },
+          { label: "HARD", rating: "{starRatings.HARD}", color: "rgb(249 115 22)" },
+          { label: "EX", rating: "{starRatings.EX}", color: "rgb(220 38 38)" },
+          { label: "EXP", rating: "{starRatings.EXP}", color: "rgb(126 34 206)" }
+        ],
+        defaultWidth: 100,
+        specialWidth: 120,
+        height: 50,
+        defaultSpacing: 110,
+        specialSpacing: 130
+      };
+    }
+    addComponent(component);
+    setNewComponentText('');
+    setSelectedToken('');
+  };
+  // ----- End new creation code -----
+
+  // Local state for token selection and drag indexes
+  const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null);
 
   // Updated drag handlers with smooth transition and no duplicate rendering
   const handleDragStart = (index: number, event: React.DragEvent<HTMLDivElement>) => {
@@ -114,6 +183,56 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
   return (
     <div>
       <h1 className="text-4xl font-bold mb-6">Component Editor</h1>
+      {/* New Component Creator Section */}
+      {selectedComponentIndex === null && (
+        <div className="mb-8 p-4 border border-gray-600 rounded-lg">
+          <Typography variant="h6" className="mb-4">Add New Component</Typography>
+          <div className="mb-4">
+            <Typography variant="caption">Component Type</Typography>
+            <select
+              value={newComponentType}
+              onChange={e => setNewComponentType(e.target.value)}
+              className="w-full p-2 rounded bg-white text-neutral-900"
+            >
+              <option value="text">text</option>
+              <option value="image">image</option>
+              <option value="roundedRect">roundedRect</option>
+              <option value="starRating">starRating</option>
+            </select>
+          </div>
+          {newComponentType === 'text' && fetchedData && (
+            <div className="mb-4">
+              {!selectedToken ? (
+                <>
+                  <Typography variant="caption">Select a token:</Typography>
+                  {renderTopLevelOptions(fetchedData)}
+                </>
+              ) : (
+                <>
+                  <Typography variant="subtitle1" className="mb-2">Selected Token: {selectedToken}</Typography>
+                  {selectedNestedData && typeof selectedNestedData === 'object' && (
+                    <>
+                      <Typography variant="caption">Subtokens for {selectedToken}:</Typography>
+                      {renderSubtokenOptions(selectedNestedData, selectedToken.replace(/{|}/g, ''))}
+                    </>
+                  )}
+                </>
+              )}
+              <TextField 
+                fullWidth 
+                value={newComponentText || selectedToken} 
+                onChange={e => setNewComponentText(e.target.value)} 
+                placeholder="Enter text for the component" 
+                className="bg-white text-neutral-900 rounded-lg" 
+              />
+            </div>
+          )}
+          <Button onClick={handleAddComponent} className="border-green-500 bg-green-500/10">
+            Add Component
+          </Button>
+        </div>
+      )}
+      {/* Existing Components List and Editor */}
       {selectedComponentIndex === null ? (
         <>
           <Typography variant="subtitle1" className="mb-2">
@@ -134,7 +253,7 @@ const ComponentEditor: React.FC<ComponentEditorProps> = ({
               return (
                 <div
                   key={index}
-                  className="flex items-center justify-between bg-gray-700 p-2 rounded cursor-move transition-all duration-300"
+                  className="flex items-center justify-between bg-indigo-500/30 p-2 rounded-lg cursor-move transition-all duration-300"
                   style={{
                     border: dragOverIndex === index ? '2px dashed #60A5FA' : 'none',
                     opacity: draggingIndex === index ? 0.5 : 1

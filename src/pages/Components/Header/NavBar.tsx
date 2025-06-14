@@ -27,21 +27,13 @@ const NavBar = () => {
     return (
         <nav className="w-full flex bg-neutral-950 text-white items-center">
             <div className="container mx-auto flex items-center justify-between h-20 px-4">
-                <a href="/generator" className="text-lg font-semibold text-indigo-500">
+                <a href="/" className="text-lg font-semibold text-indigo-500">
                     <div className="flex items-center space-x-2">
                         <img src={logo} alt="logo" className="w-10 h-10 rounded-md" />
                         <h2 className="hidden sm:block text-xl font-semibold text-indigo-500">BeatCard Editor</h2>
                     </div>
                 </a>
                 <div className="relative flex space-x-2 items-center" ref={navRef}>
-                    <NavLink
-                        to="/generator"
-                        className={({ isActive }) =>
-                            `z-20 text-lg p-2 px-4 font-bold rounded-t-2xl transition-all duration-200 ${isActive ? 'active text-indigo-500' : 'text-neutral-400'}`
-                        }
-                    >
-                        Generator
-                    </NavLink>
                     <NavLink
                         to="/editor"
                         className={({ isActive }) =>
